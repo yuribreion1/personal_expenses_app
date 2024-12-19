@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import UIkit from 'uikit';
 
 const Form = () => {
   const [formData, setFormData] = useState({ name: '', date: '', description: '', amount: '' });
@@ -10,13 +10,33 @@ const Form = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Send the form data to the back-end
     try {
-      const response = await axios.post('http://localhost:3001/expenses', formData, { withCredentials: true });
-      alert('Expense added successfully!');
-    } catch (err) {
-      alert('Error adding expense!');
+      const response = await fetch("http://localhost:3001/expenses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      if (response.ok) {
+        UIkit.notification({message: 'Expense added successfully!', status: 'success'});
+        setFormData({
+          date: "",
+          amount: "",
+          category: "",
+          description: "",
+        });
+      } else {
+        throw new Error("Failed to submit form");
+      }
+    } catch (error) {
+      UIkit.notification({message: error.message, status: 'danger'});
     }
-  };
+};
 
   return (
     <form onSubmit={handleSubmit}>

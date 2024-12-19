@@ -4,13 +4,20 @@ const { Strategy } = require('passport-google-oauth20');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const { Sequelize, DataTypes } = require('sequelize');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+
+const corsOptions = {
+  origin: 'http://localhost:3000',
+  credentials: true,
+  optionSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(session({ secret: 'SECRET', resave: false, saveUninitialized: true }));
-app.use(passport.initialize());
-app.use(passport.session());
 
 // Google OAuth2 Configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -20,7 +27,7 @@ const ALLOWED_USERS = [process.env.ALLOWED_USER_1, process.env.ALLOWED_USER_2];
 passport.use(new Strategy({
   clientID: GOOGLE_CLIENT_ID,
   clientSecret: GOOGLE_CLIENT_SECRET,
-  callbackURL: '/auth/google/callback'
+  callbackURL: 'http://localhost:3001/auth/google/callback'
 }, (token, tokenSecret, profile, done) => {
   if (ALLOWED_USERS.includes(profile.emails[0].value)) {
     return done(null, profile);
@@ -49,7 +56,10 @@ const Expense = sequelize.define('Expense', {
 sequelize.sync({ force: true }); // WARNING: Drops and recreates the table
 
 // Google OAuth Routes
-app.get('/auth/google', passport.authenticate('google', { scope: ['email'] }));
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.post('/auth/google', passport.authenticate('google', { scope: ['email'] }));
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => res.redirect('/form'));
@@ -61,6 +71,11 @@ app.post('/expenses', isAuthenticated, async (req, res) => {
     const expense = await Expense.create({ name, date, description, amount });
     res.status(201).json(expense);
   } catch (err) {
+    if (res.statusCode === 401) {
+
+      console.log(`CORS Error: Unauthorized access attempt on route: ${req.originalUrl}`);
+      return res.status(401).json({ error: err.message });
+    }
     res.status(400).json({ error: err.message });
   }
 });
