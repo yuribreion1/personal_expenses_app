@@ -59,13 +59,14 @@ sequelize.sync({ force: true }); // WARNING: Drops and recreates the table
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.post('/auth/google', passport.authenticate('google', { scope: ['email'] }));
+app.get('/auth/google', passport.authenticate('google', { scope: ['email'] }));
+
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => res.redirect('/form'));
 
 // API Endpoints
-app.post('/expenses', isAuthenticated, async (req, res) => {
+app.post('/expenses', async (req, res) => {
   const { name, date, description, amount } = req.body;
   try {
     const expense = await Expense.create({ name, date, description, amount });
@@ -80,7 +81,7 @@ app.post('/expenses', isAuthenticated, async (req, res) => {
   }
 });
 
-app.get('/expenses', isAuthenticated, async (req, res) => {
+app.get('/expenses', async (req, res) => {
   const expenses = await Expense.findAll();
   res.json(expenses);
 });
